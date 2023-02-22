@@ -1,0 +1,284 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Windows.Forms;
+using System.Diagnostics;
+using MySql.Data.MySqlClient;
+using System.Net.NetworkInformation;
+
+
+
+namespace filesec
+{
+    public partial class Form4 : Form
+    {
+        private string conn;
+        private MySqlConnection connect;
+
+        public Form4()
+        {
+            InitializeComponent();
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void db_connection()
+        {
+            //try
+            {
+                conn = "Server=localhost;Database=fs;Uid=root;Pwd=;";
+                connect = new MySqlConnection(conn);
+                connect.Open();
+            }
+            /*catch (MySqlException e)
+            {
+                MessageBox.Show("start xampp");
+                throw;
+            }*/
+        }
+
+
+        private void button1_Click(object sender, EventArgs e)
+        { 
+            string user = textBox1.Text;
+            DecryptFile(user);
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            validate_login();
+            
+        }
+        private void DecryptFile(string inputFile)
+        {
+
+            try{
+
+                int i = 0;
+                int[] n = new int[1000];
+                string password = @"pvshi159"; // Your Key Here
+
+                UnicodeEncoding UE = new UnicodeEncoding();
+                byte[] key = UE.GetBytes(password);
+
+                FileStream fsCrypt = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+                RijndaelManaged RMCrypto = new RijndaelManaged();
+
+                CryptoStream cs = new CryptoStream(fsCrypt,
+                    RMCrypto.CreateDecryptor(key, key),
+                    CryptoStreamMode.Read);
+
+                int data;
+                while ((data = cs.ReadByte()) != -1)
+                {
+                    n[i] = data;
+                    i++;
+                }               
+                fsCrypt.Close();
+                cs.Close();
+
+                FileStream fsOut = new FileStream(inputFile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+                 for (int j = 0; j < i; j++)
+                 {
+                     fsOut.WriteByte((byte)n[j]);
+                 }
+                fsOut.Close();
+                DialogResult result = MessageBox.Show("File opened", "Success", MessageBoxButtons.OK);
+                if (result == DialogResult.OK)
+                {
+                    EncryptFile(inputFile);
+                }                         
+            }
+            catch
+            {
+                MessageBox.Show("Decryption failed!", "Error");
+            }
+        }
+
+        private void EncryptFile(string inputFile)
+        {
+
+            try
+            {
+                int i = 0;
+                int[] n = new int[1000];
+                string password = @"pvshi159"; // Your Key Here
+                UnicodeEncoding UE = new UnicodeEncoding();
+                byte[] key = UE.GetBytes(password);
+                string cryptFile = textBox1.Text;
+
+
+                FileStream fsIn = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+                int data;
+                while ((data = fsIn.ReadByte()) != -1)
+                {
+                    n[i] = data;
+                    Debug.WriteLine(n[i]);
+                    i++;
+                }
+                textBox2.Text = File.ReadAllText(inputFile);
+                fsIn.Close();
+
+                File.Delete(inputFile);
+
+                FileStream fsCrypt = new FileStream(cryptFile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                RijndaelManaged RMCrypto = new RijndaelManaged();
+
+                CryptoStream cs = new CryptoStream(fsCrypt,
+                    RMCrypto.CreateEncryptor(key, key),
+                    CryptoStreamMode.Write);
+
+
+                for (int j = 0; j < i; j++)
+                    cs.WriteByte((byte)n[j]);
+
+
+                cs.Close();
+                fsCrypt.Close();
+
+                FileStream fileLockStream = File.Open(inputFile, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                fileLockStream.Lock(0, fileLockStream.Length);
+                fileLockStream.Close();
+            }
+            catch (IOException)
+            {
+                MessageBox.Show("cannot delete file", "Error");
+            }
+            catch
+            {
+                MessageBox.Show("Encryption failed!", "Error");
+            }
+        }
+        private void Encrypt(string inputFile,string content)
+        {
+            char[] x = content.ToCharArray();
+
+            try
+            {
+              
+                int[] n = new int[1000];
+                string password = @"pvshi159"; // Your Key Here
+                UnicodeEncoding UE = new UnicodeEncoding();
+                byte[] key = UE.GetBytes(password);
+                string cryptFile = textBox1.Text;
+
+                File.Delete(inputFile);
+
+                FileStream fsCrypt = new FileStream(cryptFile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                RijndaelManaged RMCrypto = new RijndaelManaged();
+
+                CryptoStream cs = new CryptoStream(fsCrypt,RMCrypto.CreateEncryptor(key, key),CryptoStreamMode.Write);
+
+               // System.IO.File.WriteAllText(cryptFile, content);
+
+                for (int j = 0; j < content.Length; j++)
+                  cs.WriteByte((byte)x[j]);
+
+
+                cs.Close();
+                fsCrypt.Close();
+                MessageBox.Show("fIle edited...");
+
+
+                FileStream fileLockStream = File.Open(inputFile, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+                fileLockStream.Lock(0, fileLockStream.Length);
+                fileLockStream.Close();
+            }
+            catch (IOException)
+            {
+                MessageBox.Show("cannot delete file", "Error");
+            }
+            catch
+            {
+                MessageBox.Show("Encryption failed!", "Error");
+            }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            Form3 f2 = new Form3();
+            f2.Show();
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            string file = textBox1.Text;
+            string x = textBox2.Text;
+            Encrypt(file,x);
+            
+
+        }
+
+        public string GetMACAddress()
+        {
+            NetworkInterface[] nics = NetworkInterface.GetAllNetworkInterfaces();
+            String sMacAddress = string.Empty;
+            foreach (NetworkInterface adapter in nics)
+            {
+                if (sMacAddress == String.Empty)// only return MAC Address from first card  
+                {
+                    IPInterfaceProperties properties = adapter.GetIPProperties();
+                    sMacAddress = adapter.GetPhysicalAddress().ToString();
+                }
+            }
+            return sMacAddress;
+        }
+
+        private void validate_login()
+        {
+            string MAC = GetMACAddress();
+            db_connection();
+            MySqlCommand cmd = new MySqlCommand();
+            cmd.CommandText = "Select folder from reg where MAC=@MAC ";
+            cmd.Parameters.AddWithValue("@MAC", MAC);
+            cmd.Connection = connect;
+            MySqlDataReader login = cmd.ExecuteReader();
+            if (login.Read())
+            {
+                string x= login.GetString("folder");
+                OpenFileDialog openFileDialog1 = new OpenFileDialog();
+                MessageBox.Show(x);
+                openFileDialog1.InitialDirectory = x;
+                openFileDialog1.Title = "Browse Text Files";
+
+                openFileDialog1.CheckFileExists = true;
+                openFileDialog1.CheckPathExists = true;
+
+                openFileDialog1.DefaultExt = "txt";
+                openFileDialog1.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+                openFileDialog1.FilterIndex = 2;
+                openFileDialog1.RestoreDirectory = true;
+
+                openFileDialog1.ReadOnlyChecked = true;
+                openFileDialog1.ShowReadOnly = true;
+
+                if (openFileDialog1.ShowDialog() == DialogResult.OK)
+                {
+                    textBox1.Text = openFileDialog1.FileName;
+                }
+                connect.Close();
+            }
+            else
+            {
+                connect.Close();
+            }
+        }
+    }
+}
+
+
+
